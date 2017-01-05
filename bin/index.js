@@ -12,6 +12,8 @@ var yargs = require('yargs')
   .alias('d', 'dest')
   .describe('d', 'Destination path for git-hook (default: ./.git/hooks/)')
   .describe('hooks', 'Print a complete list of git-hooks')
+  .alias('w', 'warn')
+  .describe('w', 'Warn only, no fatal error if git repo not found')
   .help('h')
   .alias('h', 'help')
   .example('$0 pre-commit')
@@ -40,8 +42,8 @@ var dest;
 if (argv.dest) {
   dest = argv.dest;
 } else {
-  var topLevel = exec('git rev-parse --show-toplevel', { silent: true })
-    .output.slice(0, -1);
+  var gitResponse = exec('git rev-parse --show-toplevel', { silent: true })
+  var topLevel = gitResponse.output.slice(0, -1);
   if (test('-f', topLevel + '/.git')) {
     // this is a sub module
     var buf = fs.readFileSync(topLevel + '/.git', "utf8").trim();
@@ -53,9 +55,12 @@ if (argv.dest) {
     dest = topLevel + '/.git/hooks/';
   }
 
-  if (error()) {
-    console.error('fatal: Not a git repository (or any of the parent directories): .git');
-    exit(1);
+  if (error() || gitResponse.code !==0) {
+    console.error((argv.warn?'warning':'fatal')+': Not a git repository (or any of the parent directories): .git');
+    if(argv.warn)
+      exit(0);
+    else
+      exit(1);
   }
 }
 
